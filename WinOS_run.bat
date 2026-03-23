@@ -78,6 +78,6 @@ start http://localhost:5000
 
 echo =============================================
 echo Web UI should be opening in your browser.
-echo Press any key to stop the server.
+echo Press any key to stop the server and close this window.
 pause >nul
 taskkill /f /im python.exe /fi "windowtitle eq app.py" >nul 2>&1

@@ -5,6 +5,19 @@ echo "============================================="
 echo "yt-dlp Web UI - Setup and Run (macOS)"
 echo "============================================="
 
+# Function to close terminal after exit
+cleanup() {
+    echo "Stopping server..."
+    kill $APP_PID 2>/dev/null
+    wait $APP_PID 2>/dev/null
+    echo "Server stopped. Closing terminal..."
+    sleep 1
+    # Kill the terminal process (works for Terminal.app)
+    osascript -e 'tell application "Terminal" to close first window' &>/dev/null
+    exit 0
+}
+trap cleanup EXIT INT TERM
+
 # Check Python
 if ! command -v python3 &> /dev/null; then
     echo "[ERROR] Python3 is not installed. Please install Python 3.8 or later."
@@ -53,5 +66,5 @@ open http://localhost:5000
 
 echo "============================================="
 echo "Web UI should be opening in your browser."
-echo "Press Ctrl+C to stop the server."
+echo "Press Ctrl+C to stop the server. The terminal will close automatically."
 wait $APP_PID
