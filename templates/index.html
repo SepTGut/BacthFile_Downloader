@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>yt-dlp Web UI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/static/style.css"/>
+</head>
+<body>
+
+  <div class="bg-grid"></div>
+
+  <header>
+    <div class="logo">
+      <span class="logo-icon">⬇</span>
+      <span class="logo-text">yt<span class="accent">-dlp</span> UI</span>
+    </div>
+    <span class="badge">1000+ sites</span>
+  </header>
+
+  <main>
+
+    <!-- ── FORM ── -->
+    <section class="card" id="form-card">
+      <h2>New Download</h2>
+
+      <form id="dl-form" enctype="multipart/form-data">
+
+        <!-- URL input -->
+        <div class="field">
+          <label>URLs <span class="hint">one per line — YouTube, Twitter/X, TikTok, Instagram, SoundCloud…</span></label>
+          <textarea id="urls" name="urls" rows="4" placeholder="https://youtube.com/watch?v=...&#10;https://twitter.com/...&#10;https://soundcloud.com/..."></textarea>
+        </div>
+
+        <!-- Batch file -->
+        <div class="field">
+          <label>Batch file <span class="hint">optional .txt with one URL per line</span></label>
+          <div class="file-drop" id="batch-drop">
+            <input type="file" name="batch_file" id="batch_file" accept=".txt"/>
+            <span id="batch-label">Drop .txt file or click to browse</span>
+          </div>
+        </div>
+
+        <!-- Format row -->
+        <div class="row-2">
+          <div class="field">
+            <label>Type</label>
+            <div class="toggle-group" id="type-toggle">
+              <button type="button" class="tog active" data-val="audio">🎵 Audio</button>
+              <button type="button" class="tog" data-val="video">🎬 Video</button>
+            </div>
+          </div>
+
+          <div class="field" id="format-wrap">
+            <label>Format</label>
+            <select name="format" id="format-select">
+              <option value="mp3">MP3</option>
+              <option value="aac">AAC</option>
+              <option value="flac">FLAC</option>
+              <option value="m4a">M4A</option>
+              <option value="opus">Opus</option>
+              <option value="wav">WAV</option>
+              <option value="alac">ALAC</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Quality row -->
+        <div class="row-2">
+          <!-- audio quality -->
+          <div class="field" id="aq-wrap">
+            <label>Audio Quality <span class="hint">0 = best</span></label>
+            <select name="quality" id="quality-select">
+              <option value="0">0 — Best (VBR)</option>
+              <option value="128K">128 kbps</option>
+              <option value="192K">192 kbps</option>
+              <option value="256K">256 kbps</option>
+              <option value="320K">320 kbps</option>
+              <option value="9">9 — Smallest</option>
+            </select>
+          </div>
+          <!-- resolution (video only) -->
+          <div class="field hidden" id="res-wrap">
+            <label>Resolution</label>
+            <select name="resolution" id="res-select">
+              <option value="best">Best available</option>
+              <option value="2160">4K (2160p)</option>
+              <option value="1440">1440p</option>
+              <option value="1080">1080p</option>
+              <option value="720">720p</option>
+              <option value="480">480p</option>
+              <option value="360">360p</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Extra options -->
+        <div class="field">
+          <label>Extra options</label>
+          <div class="checkbox-row">
+            <label class="check-label">
+              <input type="checkbox" id="sub-check"/>
+              <span>Embed subtitles (EN)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Cookies -->
+        <div class="field">
+          <label>Cookies <span class="hint">for age-restricted / private content</span></label>
+          <div class="file-drop" id="cookie-drop">
+            <input type="file" name="cookie_file" id="cookie_file" accept=".txt"/>
+            <span id="cookie-label">Drop cookies.txt or click to browse</span>
+          </div>
+          <p class="tip">Export with the <a href="https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp" target="_blank">Get cookies.txt</a> browser extension</p>
+        </div>
+
+        <!-- hidden -->
+        <input type="hidden" name="subtitles" id="sub-hidden" value="false"/>
+
+        <button type="submit" class="btn-submit" id="submit-btn">
+          <span class="btn-inner">Download</span>
+        </button>
+
+      </form>
+    </section>
+
+    <!-- ── PROGRESS ── -->
+    <section class="card hidden" id="progress-card">
+      <h2>Progress</h2>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <p id="progress-msg" class="progress-msg">Starting…</p>
+      <div class="log-box" id="log-box"></div>
+      <button class="btn-secondary" id="new-dl-btn">New Download</button>
+    </section>
+
+    <!-- ── DOWNLOADS LIST ── -->
+    <section class="card" id="files-card">
+      <div class="files-header">
+        <h2>Downloaded Files</h2>
+        <button class="btn-refresh" id="refresh-btn">↻ Refresh</button>
+      </div>
+      <ul id="file-list" class="file-list">
+        <li class="empty">No files yet.</li>
+      </ul>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>Powered by <a href="https://github.com/yt-dlp/yt-dlp" target="_blank">yt-dlp</a> · Running locally on your machine</p>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
