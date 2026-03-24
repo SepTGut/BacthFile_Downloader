@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -12,12 +12,18 @@
 
   <div class="bg-grid"></div>
 
+  <!-- Toast container -->
+  <div id="toast-container"></div>
+
   <header>
     <div class="logo">
       <span class="logo-icon">⬇</span>
       <span class="logo-text">yt<span class="accent">-dlp</span> UI</span>
     </div>
-    <span class="badge">1000+ sites</span>
+    <div class="header-right">
+      <span class="badge">1000+ sites</span>
+      <button class="theme-toggle" id="theme-toggle" title="Toggle theme">🌙</button>
+    </div>
   </header>
 
   <main>
@@ -28,13 +34,11 @@
 
       <form id="dl-form" enctype="multipart/form-data">
 
-        <!-- URL input -->
         <div class="field">
-          <label>URLs <span class="hint">one per line — YouTube, Twitter/X, TikTok, Instagram, SoundCloud…</span></label>
-          <textarea id="urls" name="urls" rows="4" placeholder="https://youtube.com/watch?v=...&#10;https://twitter.com/...&#10;https://soundcloud.com/..."></textarea>
+          <label>URLs <span class="hint">one per line — YouTube, Twitter/X, TikTok, SoundCloud…</span></label>
+          <textarea id="urls" name="urls" rows="4" placeholder="https://youtube.com/watch?v=...&#10;https://twitter.com/...&#10;ytsearch1:AJR Bang"></textarea>
         </div>
 
-        <!-- Batch file -->
         <div class="field">
           <label>Batch file <span class="hint">optional .txt with one URL per line</span></label>
           <div class="file-drop" id="batch-drop">
@@ -43,7 +47,6 @@
           </div>
         </div>
 
-        <!-- Format row -->
         <div class="row-2">
           <div class="field">
             <label>Type</label>
@@ -52,8 +55,7 @@
               <button type="button" class="tog" data-val="video">🎬 Video</button>
             </div>
           </div>
-
-          <div class="field" id="format-wrap">
+          <div class="field">
             <label>Format</label>
             <select name="format" id="format-select">
               <option value="mp3">MP3</option>
@@ -67,9 +69,7 @@
           </div>
         </div>
 
-        <!-- Quality row -->
         <div class="row-2">
-          <!-- audio quality -->
           <div class="field" id="aq-wrap">
             <label>Audio Quality <span class="hint">0 = best</span></label>
             <select name="quality" id="quality-select">
@@ -81,7 +81,6 @@
               <option value="9">9 — Smallest</option>
             </select>
           </div>
-          <!-- resolution (video only) -->
           <div class="field hidden" id="res-wrap">
             <label>Resolution</label>
             <select name="resolution" id="res-select">
@@ -96,18 +95,38 @@
           </div>
         </div>
 
-        <!-- Extra options -->
+        <!-- Advanced options row -->
+        <div class="row-2">
+          <div class="field">
+            <label>Rate Limit <span class="hint">e.g. 500K, 2M — blank = unlimited</span></label>
+            <input type="text" name="rate_limit" id="rate-limit" placeholder="e.g. 1M"/>
+          </div>
+          <div class="field">
+            <label>Max simultaneous <span class="hint">downloads at once</span></label>
+            <select name="thread_limit" id="thread-limit">
+              <option value="1">1 — One at a time</option>
+              <option value="2">2</option>
+              <option value="3" selected>3 (default)</option>
+              <option value="5">5</option>
+              <option value="10">10</option>
+            </select>
+          </div>
+        </div>
+
         <div class="field">
-          <label>Extra options</label>
+          <label>Options</label>
           <div class="checkbox-row">
             <label class="check-label">
               <input type="checkbox" id="sub-check"/>
               <span>Embed subtitles (EN)</span>
             </label>
+            <label class="check-label">
+              <input type="checkbox" id="sponsorblock-check"/>
+              <span>⚡ SponsorBlock</span>
+            </label>
           </div>
         </div>
 
-        <!-- Cookies -->
         <div class="field">
           <label>Cookies <span class="hint">for age-restricted / private content</span></label>
           <div class="file-drop" id="cookie-drop">
@@ -117,19 +136,34 @@
           <p class="tip">Export with the <a href="https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp" target="_blank">Get cookies.txt</a> browser extension</p>
         </div>
 
-        <!-- hidden -->
         <input type="hidden" name="subtitles" id="sub-hidden" value="false"/>
+        <input type="hidden" name="sponsorblock" id="sponsorblock-hidden" value="false"/>
 
-        <button type="submit" class="btn-submit" id="submit-btn">
-          <span class="btn-inner">Download</span>
-        </button>
+        <button type="submit" class="btn-submit" id="submit-btn">Download</button>
 
       </form>
     </section>
 
     <!-- ── PROGRESS ── -->
     <section class="card hidden" id="progress-card">
-      <h2>Progress</h2>
+      <div class="progress-header">
+        <h2>Progress</h2>
+        <button class="btn-cancel" id="cancel-btn">✕ Cancel</button>
+      </div>
+
+      <!-- batch: video X of Y -->
+      <div id="batch-progress-wrap" class="hidden">
+        <div class="batch-label-row">
+          <span id="batch-progress-label" class="batch-label">Video 0 / 0</span>
+          <span id="batch-overall-pct" class="batch-pct">0%</span>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" id="batch-overall-bar"></div>
+        </div>
+      </div>
+
+      <!-- current file progress -->
+      <p class="section-label">Current file</p>
       <div class="progress-bar-wrap">
         <div class="progress-bar" id="progress-bar"></div>
       </div>
@@ -142,7 +176,14 @@
     <section class="card" id="files-card">
       <div class="files-header">
         <h2>Downloaded Files</h2>
-        <button class="btn-refresh" id="refresh-btn">↻ Refresh</button>
+        <div class="files-controls">
+          <select id="sort-select" class="sort-select">
+            <option value="date">Sort: Date</option>
+            <option value="name">Sort: Name</option>
+            <option value="size">Sort: Size</option>
+          </select>
+          <button class="btn-refresh" id="refresh-btn">↻</button>
+        </div>
       </div>
       <ul id="file-list" class="file-list">
         <li class="empty">No files yet.</li>
@@ -152,7 +193,7 @@
   </main>
 
   <footer>
-    <p>Powered by <a href="https://github.com/yt-dlp/yt-dlp" target="_blank">yt-dlp</a> · Running locally on your machine</p>
+    <p>Powered by <a href="https://github.com/yt-dlp/yt-dlp" target="_blank">yt-dlp</a> · Running locally</p>
   </footer>
 
   <script src="/static/app.js"></script>
