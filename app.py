@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, render_template, send_from_directory
-import subprocess, os, threading, uuid, json, re
+import subprocess, os, threading, uuid, re, glob
 
 app = Flask(__name__)
 
@@ -9,13 +9,10 @@ COOKIE_DIR = os.path.join(BASE_DIR, "cookies")
 os.makedirs(DL_DIR, exist_ok=True)
 os.makedirs(COOKIE_DIR, exist_ok=True)
 
-jobs = {}   # job_id -> { status, message, log, percent }
+jobs = {}
 
-
-# ─── helpers ────────────────────────────────────────────────────────────────
 
 def parse_percent(line):
-    """Extract % from yt-dlp progress lines."""
     if "[download]" in line and "%" in line:
         try:
             match = re.search(r'(\d+\.?\d*)%', line)
@@ -26,12 +23,24 @@ def parse_percent(line):
     return None
 
 
+def cleanup_old_cookies():
+    """Keep only the 5 most recent cookie files. FIX #4"""
+    files = sorted(
+        glob.glob(os.path.join(COOKIE_DIR, "cookies_*.txt")),
+        key=os.path.getmtime, reverse=True
+    )
+    for old in files[5:]:
+        try:
+            os.remove(old)
+        except Exception:
+            pass
+
+
 def build_cmd(url_list, opts):
-    """Build the yt-dlp command from options dict."""
-    fmt        = opts.get("format", "mp3")
-    resolution = opts.get("resolution", "best")
-    quality    = opts.get("quality", "0")
-    subtitles  = opts.get("subtitles", False)
+    fmt         = opts.get("format", "mp3")
+    resolution  = opts.get("resolution", "best")
+    quality     = opts.get("quality", "0")
+    subtitles   = opts.get("subtitles", False)
     cookie_file = opts.get("cookie_file", "")
 
     is_audio = fmt in ("mp3", "aac", "flac", "m4a", "opus", "wav", "alac")
@@ -50,13 +59,13 @@ def build_cmd(url_list, opts):
             "--embed-metadata",
         ]
     else:
-        # Video: pick best video+audio without container restrictions,
-        # then merge to the desired format.
         if resolution == "best":
             format_sel = "bestvideo+bestaudio/best"
         else:
-            format_sel = f"bestvideo[height<={resolution}]+bestaudio/bestvideo[height<={resolution}]+bestaudio/best"
-
+            format_sel = (
+                f"bestvideo[height<={resolution}]+bestaudio/"
+                f"bestvideo[height<={resolution}]+bestaudio/best"
+            )
         cmd += [
             "-f", format_sel,
             "--merge-output-format", fmt,
@@ -64,11 +73,16 @@ def build_cmd(url_list, opts):
             "--embed-metadata",
         ]
 
+    # FIX #2: include --write-auto-sub as fallback for auto-generated subs
     if subtitles:
-        cmd += ["--write-subs", "--embed-subs", "--sub-lang", "en"]
+        cmd += [
+            "--write-subs",
+            "--write-auto-sub",
+            "--embed-subs",
+            "--sub-lang", "en",
+        ]
 
     cmd += ["-o", os.path.join(DL_DIR, "%(uploader)s - %(title)s.%(ext)s")]
-
     cmd += url_list
     return cmd
 
@@ -80,23 +94,24 @@ def run_job(job_id, url_list, opts):
 
     try:
         proc = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, bufsize=1, encoding='utf-8', errors='replace'
+            cmd,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, bufsize=1, encoding="utf-8", errors="replace",
         )
         for line in proc.stdout:
             line = line.rstrip()
             jobs[job_id]["log"].append(line)
+            # cap at 200 lines
             if len(jobs[job_id]["log"]) > 200:
                 jobs[job_id]["log"] = jobs[job_id]["log"][-200:]
-            
+
             pct = parse_percent(line)
             if pct is not None:
                 jobs[job_id]["percent"] = pct
-                if pct < 100:
-                    jobs[job_id]["message"] = f"Downloading: {pct:.1f}%"
-                else:
-                    jobs[job_id]["message"] = "Processing..."
-        
+                jobs[job_id]["message"] = (
+                    f"Downloading: {pct:.1f}%" if pct < 100 else "Processing…"
+                )
+
         proc.wait()
 
         if proc.returncode == 0:
@@ -106,15 +121,14 @@ def run_job(job_id, url_list, opts):
         else:
             jobs[job_id]["status"]  = "error"
             jobs[job_id]["message"] = "❌ yt-dlp exited with errors. See log below."
+
     except FileNotFoundError:
         jobs[job_id]["status"]  = "error"
-        jobs[job_id]["message"] = "❌ yt-dlp not found. Install it first: pip install yt-dlp"
+        jobs[job_id]["message"] = "❌ yt-dlp not found. Run: pip install yt-dlp"
     except Exception as e:
         jobs[job_id]["status"]  = "error"
         jobs[job_id]["message"] = f"❌ Error: {str(e)}"
 
-
-# ─── routes ─────────────────────────────────────────────────────────────────
 
 @app.route("/")
 def index():
@@ -132,7 +146,7 @@ def download():
         f = request.files["batch_file"]
         if f and f.filename and f.filename.endswith(".txt"):
             try:
-                extra = f.read().decode('utf-8').splitlines()
+                extra = f.read().decode("utf-8").splitlines()
                 url_list += [u.strip() for u in extra if u.strip()]
             except Exception as e:
                 return jsonify({"error": f"Failed to read batch file: {str(e)}"}), 400
@@ -140,12 +154,14 @@ def download():
     if not url_list:
         return jsonify({"error": "No URLs provided."}), 400
 
+    # FIX #4: save cookie then prune old ones
     cookie_path = ""
     if "cookie_file" in request.files:
         cf = request.files["cookie_file"]
         if cf and cf.filename:
             cookie_path = os.path.join(COOKIE_DIR, f"cookies_{uuid.uuid4().hex[:8]}.txt")
             cf.save(cookie_path)
+            cleanup_old_cookies()
 
     opts = {
         "format":      data.get("format", "mp3"),
@@ -158,7 +174,7 @@ def download():
     job_id = str(uuid.uuid4())
     jobs[job_id] = {
         "status":  "queued",
-        "message": "Queued...",
+        "message": "Queued…",
         "percent": 0,
         "log":     [],
         "urls":    url_list,
@@ -177,10 +193,11 @@ def status(job_id):
     if not job:
         return jsonify({"error": "Job not found"}), 404
     return jsonify({
-        "status":  job["status"],
-        "message": job["message"],
-        "percent": job["percent"],
-        "log":     job["log"][-50:],
+        "status":    job["status"],
+        "message":   job["message"],
+        "percent":   job["percent"],
+        "log":       job["log"][-50:],
+        "log_total": len(job["log"]),  # FIX #5: client uses this to sync
     })
 
 
@@ -193,7 +210,7 @@ def list_downloads():
             if os.path.isfile(fp):
                 files.append({
                     "name": fn,
-                    "size": round(os.path.getsize(fp) / (1024*1024), 2),
+                    "size": round(os.path.getsize(fp) / (1024 * 1024), 2),
                 })
     except Exception:
         pass
@@ -207,8 +224,8 @@ def serve_file(filename):
 
 if __name__ == "__main__":
     print("=" * 50)
-    print("🎬 yt-dlp Web UI Starting...")
-    print(f"📍 URL: http://localhost:5000")
-    print(f"📁 Downloads folder: {DL_DIR}")
+    print("🎬 yt-dlp Web UI Starting…")
+    print("📍 URL  : http://localhost:5000")
+    print(f"📁 Save : {DL_DIR}")
     print("=" * 50)
     app.run(debug=False, port=5000)

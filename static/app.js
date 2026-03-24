@@ -9,8 +9,6 @@ const VIDEO_FORMATS = ['mp4','mkv','webm','avi','mov'];
 
 function setType(type) {
   typeToggles.forEach(b => b.classList.toggle('active', b.dataset.val === type));
-
-  // rebuild format options
   formatSelect.innerHTML = '';
   const opts = type === 'audio' ? AUDIO_FORMATS : VIDEO_FORMATS;
   opts.forEach(f => {
@@ -18,13 +16,12 @@ function setType(type) {
     o.value = f; o.textContent = f.toUpperCase();
     formatSelect.appendChild(o);
   });
-
   aqWrap.classList.toggle('hidden',  type === 'video');
   resWrap.classList.toggle('hidden', type === 'audio');
 }
 
 typeToggles.forEach(b => b.addEventListener('click', () => setType(b.dataset.val)));
-setType('audio'); // default
+setType('audio');
 
 /* ── Subtitle checkbox ──────────────────────────────────────── */
 const subCheck  = document.getElementById('sub-check');
@@ -59,7 +56,7 @@ const logBox    = document.getElementById('log-box');
 const submitBtn = document.getElementById('submit-btn');
 const newDlBtn  = document.getElementById('new-dl-btn');
 
-let pollTimer = null;
+let pollTimer   = null;
 
 form.addEventListener('submit', async e => {
   e.preventDefault();
@@ -79,11 +76,11 @@ form.addEventListener('submit', async e => {
       return;
     }
 
-    // switch to progress view
     formCard.classList.add('hidden');
     progCard.classList.remove('hidden');
     logBox.innerHTML = '';
     progBar.style.width = '0%';
+    progBar.style.background = '';
     progMsg.textContent = 'Queued…';
 
     startPolling(data.job_id);
@@ -96,36 +93,42 @@ form.addEventListener('submit', async e => {
 
 function startPolling(jobId) {
   if (pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(() => pollStatus(jobId), 800);
+  // FIX #5: track by log_total (absolute count), not local slice length
+  let knownLogTotal = 0;
+  pollTimer = setInterval(() => pollStatus(jobId, (newTotal) => {
+    knownLogTotal = newTotal;
+  }, () => knownLogTotal), 800);
 }
 
-let lastLogLen = 0;
-
-async function pollStatus(jobId) {
+async function pollStatus(jobId, setTotal, getTotal) {
   try {
     const res  = await fetch('/status/' + jobId);
     const data = await res.json();
 
-    // progress bar
     progBar.style.width = (data.percent || 0) + '%';
     if (data.percent >= 100) progBar.style.background = 'var(--green)';
 
-    // message
     if (data.message) progMsg.textContent = data.message;
 
-    // log lines (append only new ones)
-    const lines = data.log || [];
-    if (lines.length > lastLogLen) {
-      const newLines = lines.slice(lastLogLen);
+    // FIX #5: use log_total to figure out which lines are new
+    const serverTotal = data.log_total || 0;
+    const lines       = data.log || [];
+    const knownTotal  = getTotal();
+
+    if (serverTotal > knownTotal) {
+      // lines[] contains the last 50 lines from server; figure out which are new
+      const alreadySeen = Math.max(0, knownTotal - (serverTotal - lines.length));
+      const newLines    = lines.slice(alreadySeen);
+
       newLines.forEach(line => {
         const div = document.createElement('div');
         div.textContent = line;
-        if (line.includes('[download]'))   div.className = 'log-line-dl';
+        if (line.includes('[download]'))                              div.className = 'log-line-dl';
         if (line.includes('[ExtractAudio]') || line.includes('Merging')) div.className = 'log-line-done';
-        if (line.includes('ERROR'))        div.className = 'log-line-error';
+        if (line.includes('ERROR'))                                   div.className = 'log-line-error';
         logBox.appendChild(div);
       });
-      lastLogLen = lines.length;
+      setTotal(serverTotal);
       logBox.scrollTop = logBox.scrollHeight;
     }
 
@@ -146,9 +149,7 @@ newDlBtn.addEventListener('click', () => {
   submitBtn.textContent = 'Download';
   form.reset();
   setType('audio');
-  lastLogLen = 0;
 
-  // reset file drop labels
   document.getElementById('batch-label').textContent  = 'Drop .txt file or click to browse';
   document.getElementById('cookie-label').textContent = 'Drop cookies.txt or click to browse';
   document.getElementById('batch-drop').classList.remove('has-file');
@@ -172,7 +173,7 @@ async function loadFiles() {
       const li = document.createElement('li');
       li.className = 'file-item';
       li.innerHTML = `
-        <span class="file-name" title="${f.name}">${escapeHtml(f.name)}</span>
+        <span class="file-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</span>
         <span class="file-meta">
           <span class="file-size">${f.size} MB</span>
           <a class="file-dl" href="/downloads/${encodeURIComponent(f.name)}" download>↓ Save</a>
@@ -184,7 +185,6 @@ async function loadFiles() {
   }
 }
 
-// Helper function to escape HTML
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
@@ -192,4 +192,4 @@ function escapeHtml(text) {
 }
 
 refreshBtn.addEventListener('click', loadFiles);
-loadFiles(); // on page load
+loadFiles();

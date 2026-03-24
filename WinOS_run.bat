@@ -14,14 +14,13 @@ if errorlevel 1 (
     exit /b 1
 )
 
-:: Check Python version (simple)
 for /f "tokens=2" %%i in ('python --version 2^>^&1') do set pyver=%%i
 echo Python found: %pyver%
 
 :: Ensure pip
 python -m pip --version >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] pip is not available. Please ensure pip is installed.
+    echo [ERROR] pip is not available.
     pause
     exit /b 1
 )
@@ -38,19 +37,17 @@ if errorlevel 1 (
 :: Check ffmpeg
 ffmpeg -version >nul 2>&1
 if errorlevel 1 (
-    echo [WARNING] ffmpeg not found. Attempting to install...
-    :: Try winget (Windows Package Manager)
+    echo [WARNING] ffmpeg not found. Attempting to install via winget...
     winget --version >nul 2>&1
     if not errorlevel 1 (
-        echo Installing ffmpeg via winget...
         winget install -e --id Gyan.FFmpeg --silent
         if errorlevel 1 (
-            echo [ERROR] winget installation failed. Please install ffmpeg manually.
+            echo [ERROR] winget install failed. Install ffmpeg manually from https://ffmpeg.org
         ) else (
-            echo ffmpeg installed via winget.
+            echo ffmpeg installed. You may need to restart your terminal.
         )
     ) else (
-        echo [ERROR] ffmpeg not found and no winget. Please install ffmpeg manually from https://ffmpeg.org/download.html
+        echo [ERROR] winget not found. Install ffmpeg manually from https://ffmpeg.org
         pause
         exit /b 1
     )
@@ -58,26 +55,46 @@ if errorlevel 1 (
     echo ffmpeg found.
 )
 
-:: Install Flask
-echo Installing Flask...
+:: Install Flask + mutagen
+echo Installing Python dependencies...
 python -m pip install -r requirements.txt
 if errorlevel 1 (
-    echo [ERROR] Failed to install Flask.
+    echo [ERROR] Failed to install dependencies.
     pause
     exit /b 1
 )
 
-:: Start server in background
-start /b python app.py
+:: FIX #1: Start server and capture its PID properly
+echo Starting yt-dlp Web UI...
+start "" /b python app.py
+set APP_PID=
 
-:: Wait for server to start
+:: Wait for server to be ready
 timeout /t 3 /nobreak >nul
+
+:: Get PID of the python process running app.py
+for /f "tokens=2" %%a in ('tasklist /fi "imagename eq python.exe" /fo list ^| findstr "PID:"') do (
+    for /f "tokens=*" %%b in ('wmic process where "ProcessId=%%a" get CommandLine /value 2^>nul ^| findstr "app.py"') do (
+        set APP_PID=%%a
+    )
+)
 
 :: Open browser
 start http://localhost:5000
 
 echo =============================================
-echo Web UI should be opening in your browser.
-echo Press any key to stop the server and close this window.
+echo Web UI running at http://localhost:5000
+echo Press any key to STOP the server only.
+echo =============================================
 pause >nul
-taskkill /f /im python.exe /fi "windowtitle eq app.py" >nul 2>&1
+
+:: FIX #1: Kill only the specific python process running app.py
+if defined APP_PID (
+    echo Stopping server (PID: %APP_PID%)...
+    taskkill /f /pid %APP_PID% >nul 2>&1
+) else (
+    echo Could not find server PID. Searching by window...
+    wmic process where "name='python.exe' and CommandLine like '%%app.py%%'" delete >nul 2>&1
+)
+
+echo Server stopped.
