@@ -5,129 +5,97 @@
 
 ---
 
+🌐 **Available Languages:**
+&nbsp;&nbsp;🇺🇸 English (you are here)
+&nbsp;&nbsp;[🇮🇩 Bahasa Indonesia](README_ID.md)
+&nbsp;&nbsp;[🇷🇺 Русский](README_RU.md)
+&nbsp;&nbsp;[🇨🇳 中文](README_CN.md)
+
+---
+
 ## ✨ Features
 
 - 🎧 Download **audio** (MP3, AAC, FLAC, M4A, Opus, WAV, ALAC)
 - 🎥 Download **video** (MP4, MKV, WebM, AVI, MOV)
-- 📦 Batch download multiple URLs
-- 🖼️ Embed thumbnails & metadata
+- 📦 Batch download — paste multiple URLs or upload a `.txt` file
+- 🖼️ Embed thumbnails & metadata automatically
 - 🎚️ Select resolution (4K → 360p) & audio quality
-- 🔐 Use cookies for restricted/private content
-- 📂 Re-download saved files
-- 📊 Real-time progress + logs in browser
+- ⚡ SponsorBlock — auto-skip sponsors, intros, outros
+- 🔐 Cookie support for age-restricted / private content
+- 🚦 Rate limiter to avoid getting flagged
+- ⚙️ Max simultaneous downloads setting
+- ✕ Cancel downloads at any time
+- 📊 Real-time per-video progress + live log
+- 🌙 Dark / Light mode toggle
+- 🗂️ File manager with sort, delete, and re-download
+- 🌐 Supports 1000+ sites: YouTube, Twitter/X, TikTok, Instagram, SoundCloud, Vimeo, and more
 
 > All downloads are saved locally in the `downloads/` folder.
 
 ---
 
-## 👥 Who Is This For?
-
-- 🟢 **Beginners** – No terminal needed  
-- 🔵 **Advanced users** – Fast UI for yt-dlp features  
-- 🟣 **Content creators** – Easy media grabbing for editing/offline use  
-
----
-
-## 💡 Why This Exists
-
-`yt-dlp` is powerful — but not beginner-friendly.
-
-This project provides:
-- 🖥️ A simple web UI
-- 🔒 100% local (no third-party services)
-- ⚡ Faster workflow with batch downloads
-- 🌍 Cross-platform support
-
----
-
 ## 🖥️ Supported Platforms
 
-- Windows 7 / 10 / 11  
-- macOS (Intel & Apple Silicon)  
-- Linux (Python 3.8+)  
+| Platform | Script |
+|----------|--------|
+| 🪟 Windows | `WinOS_run.bat` |
+| 🐧 Linux | `LinuxOS_run.sh` |
+| 🍎 macOS | `MacOS_run.sh` |
 
 ---
 
-## 🚀 Quick Start (One-Click)
+## 🚀 Quick Start
 
-Run the script for your OS:
-
-### 🪟 Windows
-```bash
-run.bat
-````
-
-### 🐧 Linux
-
-```bash
-chmod +x run.sh
-./run.sh
+### Windows
+```bat
+WinOS_run.bat
 ```
 
-### 🍎 macOS
-
+### Linux
 ```bash
-chmod +x run_mac.sh
-./run_mac.sh
+chmod +x LinuxOS_run.sh
+./LinuxOS_run.sh
 ```
 
-These scripts will:
+### macOS
+```bash
+chmod +x MacOS_run.sh
+./MacOS_run.sh
+```
 
-* ✔ Check Python
-* ✔ Install dependencies (`yt-dlp`, Flask)
-* ✔ Install `ffmpeg` (if missing)
-* ✔ Launch app at **[http://localhost:5000](http://localhost:5000)**
+The script will automatically:
+- ✔ Check Python installation
+- ✔ Install / upgrade `yt-dlp`
+- ✔ Install `ffmpeg` if missing
+- ✔ Install Python dependencies
+- ✔ Launch the web UI at **http://localhost:5000**
 
 ---
 
 ## ⚙️ Manual Setup
 
-### 1. Install Requirements
+### Requirements
+- Python 3.8+ → [python.org](https://python.org)
+- ffmpeg → [ffmpeg.org](https://ffmpeg.org)
 
-* Python 3.8+ → [https://python.org](https://python.org)
-* ffmpeg → [https://ffmpeg.org](https://ffmpeg.org)
-
-### 2. Install Dependencies
-
+### Install & Run
 ```bash
 pip install -r requirements.txt
 pip install -U yt-dlp
-```
-
-### 3. Run App
-
-```bash
 python app.py
 ```
-
-Open → **[http://localhost:5000](http://localhost:5000)**
+Open → **http://localhost:5000**
 
 ---
 
 ## 🧠 How to Use
 
-### 1. Enter URLs
-
-```
-https://youtube.com/watch?v=...
-https://twitter.com/...
-```
-
-### 2. Choose Mode
-
-* **Audio** → format + quality
-* **Video** → format + resolution
-
-### 3. Optional
-
-* Upload `.txt` (batch URLs)
-* Upload `cookies.txt`
-* Enable subtitles
-
-### 4. Download
-
-* View progress in real-time
-* Access files in **Downloaded Files**
+1. **Paste URL(s)** — one per line, or use `ytsearch1:Song Name` to search
+2. **Choose type** — Audio or Video
+3. **Pick format & quality**
+4. **Optional** — SponsorBlock, rate limit, subtitles, cookies
+5. **Click Download** — watch real-time progress
+6. **Access files** in the Downloaded Files section
 
 ---
 
@@ -137,69 +105,43 @@ https://twitter.com/...
 yt-dlp-webui/
 ├── app.py
 ├── requirements.txt
-├── run.bat / run.sh / run_mac.sh
+├── WinOS_run.bat
+├── LinuxOS_run.sh
+├── MacOS_run.sh
 ├── downloads/
 ├── cookies/
 ├── templates/
+│   └── index.html
 └── static/
+    ├── style.css
+    └── app.js
 ```
 
 ---
 
 ## 🛠️ Troubleshooting
 
-### ❌ Format not available
-
-* Ensure latest version
-* Check `ffmpeg` installed
-
-### ❌ yt-dlp not found
-
-```bash
-pip install -U yt-dlp
-```
-
-### ❌ ffmpeg not found
-
-* Install manually or rerun script
-* Restart terminal after install
-
-### ❌ App not opening
-
-* Go to → [http://localhost:5000](http://localhost:5000)
-* Check terminal errors
-
-### ❌ Port already in use
-
-Change in `app.py`:
-
-```python
-app.run(port=5001)
-```
+| Problem | Fix |
+|---------|-----|
+| `yt-dlp not found` | `pip install -U yt-dlp` |
+| `ffmpeg not found` | Install via script or [ffmpeg.org](https://ffmpeg.org) |
+| App won't open | Go to [http://localhost:5000](http://localhost:5000) manually |
+| Port already in use | Change `port=5000` to `port=5001` in `app.py` |
+| Format not available | Make sure ffmpeg is installed and yt-dlp is up to date |
 
 ---
 
 ## 📜 License
 
-MIT License — see [LICENSE](LICENSE)
+GPL-3.0 License — see [LICENSE](LICENSE)
 
 ---
 
 ## 🙌 Credits
 
-* yt-dlp
-* Flask
-* Fonts: Syne & JetBrains Mono
-
----
-
-## ⭐ Support
-
-If you like this project:
-
-* ⭐ Star the repo
-* 🐛 Report issues
-* 💡 Suggest features
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+- [Flask](https://flask.palletsprojects.com)
+- Fonts: [Syne](https://fonts.google.com/specimen/Syne) & [JetBrains Mono](https://www.jetbrains.com/lp/mono/)
 
 ---
 
